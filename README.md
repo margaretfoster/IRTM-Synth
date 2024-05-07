@@ -4,7 +4,7 @@ Welcome to the IRT-M Synth repository! This is an R and Python repository to cre
 
 Both images were produced using the ![IRT-M package](https://github.com/dasiegel/IRT-M) via a specification identifying latent threat dimensions from survey respondents and visualizing the results stratified by the degree of trust in media outlets reported by respondents. However, the image on the left was constructed from a synthetic sample of the data while the image on the right was produced using the original (real) data.
 
-<img src="./synth-vignette/theta-media-synth.png" width="400">   <img src="./synth-vignette/theta_media_trust.png" width="500">
+<img src="./synth-vignette/theta-media-synth.png" width="400" height="500">   <img src="./synth-vignette/theta_media_trust.png" width="500" height = "500">
 
 ## Overview:
 
