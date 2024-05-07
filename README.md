@@ -2,7 +2,7 @@
 
 Welcome to the IRT-M Synth repository! This is an R and Python repository to create realistic synthetic survey datasets for research and testing purposes.
 
-![Visualization using synthetic survey data](https://github.com/margaretfoster/IRTM-Synth/blob/master/synth-vignette/theta-media-synth.png)
+<img src="./synth-vignette/theta-media-synth.png" width="200">
 
 ## Overview:
 
