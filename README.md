@@ -2,6 +2,8 @@
 
 Welcome to the IRT-M Synth repository! This is an R and Python repository to create realistic synthetic survey datasets for research and testing purposes.
 
+![Visualization using synthetic survey data](https://github.com/margaretfoster/IRTM-Synth/blob/master/synth-vignette/theta-media-synth.png)
+
 ## Overview:
 
 With this repository, we address a problem endemic to producing example data for new methods and utilities. On the one hand, as social scientists, we understand the expense and labor involved in creating original survey datasets. Data is not free to produce, so originators often (justifiably!) want to control the release and distribution of their data.
