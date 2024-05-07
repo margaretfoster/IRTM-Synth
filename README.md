@@ -3,6 +3,7 @@
 Welcome to the IRT-M Synth repository! This is an R and Python repository to create realistic synthetic survey datasets for research and testing purposes.
 
 <img src="./synth-vignette/theta-media-synth.png" width="500">
+<img src="./synth-vignette/theta-media-trust.png" width="500">
 
 ## Overview:
 
