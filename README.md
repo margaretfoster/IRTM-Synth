@@ -12,6 +12,8 @@ Here, we create synthetic versions of existing data to serve as training example
 
 ## Data
 
+The scripts are currently set up to create a synthetic sample of Eurobarometer 94.3 (2021). The original data can be accessed via: https://search.gesis.org/research_data/ZA7780?doi=10.4232/1.14076
+
 ## Features:
 
 We use Python in a Jupyter Project for data preparation, [YData-synthetic](https://github.com/ydataai/ydata-synthetic) in a Google Colab notebook to create the synthetic data.
