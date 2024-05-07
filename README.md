@@ -2,10 +2,6 @@
 
 Welcome to the IRT-M Synth repository! This is an R and Python repository to create realistic synthetic survey datasets for research and testing purposes.
 
-Both images were produced using the ![IRT-M package](https://github.com/dasiegel/IRT-M) via a specification identifying latent threat dimensions from survey respondents and visualizing the results stratified by the degree of trust in media outlets reported by respondents. However, the image on the left was constructed from a synthetic sample of the data while the image on the right was produced using the original (real) data.
-
-<img src="./synth-vignette/theta-media-synth.png" width="500" height="500">   <img src="./synth-vignette/theta_media_trust.png" width="500" height = "500">
-
 ## Overview:
 
 With this repository, we address a problem endemic to producing example data for new methods and utilities. On the one hand, as social scientists, we understand the expense and labor involved in creating original survey datasets. Data is not free to produce, so originators often (justifiably!) want to control the release and distribution of their data.
@@ -13,6 +9,12 @@ With this repository, we address a problem endemic to producing example data for
 Conversely, as methodologists, we also understand that new tools require applied examples. New packages and applications need to include data in vignettes.
 
 Here, we create synthetic versions of existing data to serve as training examples, with references and links to the original datasets so that researchers and users can use (and credit) the original data in their applications.
+
+Both images were produced using the ![IRT-M package](https://github.com/dasiegel/IRT-M) via a specification identifying latent threat dimensions from survey respondents and visualizing the results stratified by the degree of trust in media outlets reported by respondents. However, the image on the left was constructed from a synthetic sample of the data while the image on the right was produced using the original (real) data.
+
+<img src="./synth-vignette/theta-media-synth.png" width="500" height="500">   <img src="./synth-vignette/theta_media_trust.png" width="500" height = "500">
+
+The synthetic data can be used for training purposes, without distributing the complete survey round. 
 
 ## Data
 
