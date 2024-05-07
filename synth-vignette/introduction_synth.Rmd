@@ -4,7 +4,7 @@ author: "Margaret Foster"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{IRT-M Vignette}
+  %\VignetteIndexEntry{IRT-M Vignette (Synthetic Data)}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -17,7 +17,7 @@ knitr::opts_chunk$set(
 ```
 
 Packages that we will use for data prep, IRT-M estimation, and data visualization:
-```{r, eval=T, echo=T, message=F, warning = FALSE}
+```{r packages, eval=T, echo=T, message=F, warning = FALSE}
 ## Data prep:
 library(tidyverse) # version: tidyverse_2.0.0 
 library(dplyr) #version: dplyr_1.1.4
@@ -26,6 +26,7 @@ library(fastDummies) # version: fastDummies_1.7.3
 library(reshape2) #version: reshape2_1.4.4
 
 ## IRT-M estimation:
+#devtools::install_github("dasiegel/IRT-M")
 library(IRTM) #version 1.00
 
 ## Results visualization: 
@@ -58,23 +59,35 @@ The core step in using the IRT-M package is to map the underlying theoretical co
 
 To begin, we reformat data so that each possible answer becomes a separate binary question (One Hot encoding). In preparing the data, we used the `dummy_cols()` utility from the `fastdummies` package.  Finally, we rename the new binary dataframe as `Y` to underscore that this is the observed data that we will be modeling. Please ensure that the `dataPath` variable is adjusted for your local file structure.
 
-```{r, eval=T, echo=T, message=F, warning = FALSE}
+```{r load-dat, eval=T, echo=T, message=F, warning = FALSE}
+## MODIFICATION FOR SYNTHETIC DATA
+
 datapath <- "../data/"
 
-ebdatsub <- read.csv(file=paste0(datapath, 'synth_test.csv'))
+ebdatsynth <- read.csv(file=paste0(datapath, 'synth_questions.csv'))
 
-#ebdatsub <- ebdat[,c(58:413)]
+colnames(ebdatsynth)
 
-#rm(ebdat) ## only keep the subset that we will work with
+## drop "X" and "unnamed" which are just row counters
+
+ebdatsynth[,c("X", "Unnamed..0")] <- NULL
 
 ## Convert numeric ordinal responses to factors
 
-ebdatsub <- lapply(ebdatsub[,], factor)
+ebdatsub <- lapply(ebdatsynth[,], factor) ## that's a list now
+
+## converts the list back into a dataframe:
 ebbinary <- dummy_cols(.data=ebdatsub,
                        remove_selected_columns=TRUE)
+
 Y <- ebbinary ## data
+
 ## remove the .data that dummy_cols adds to the column names
 colnames(Y) <- gsub(".data.", '', colnames(Y))
+
+## remove the data objects:
+rm(ebdatsub)
+rm(ebdatsynth)
 ```
 
 In this case, we are interested whether respondents to the 2021 Eurobarometer reported feeling social, cultural, and/or economic threats. Depending on the data, you may need to do some additional processing at this step to ensure that each question coded is a binary response has a single relationship to each dimension being coded. Many surveys present questions formatted into feelings thermometers, matrices, or with many nested sub-questions. These may not load straightforwardly into a single dimension. For example, Question 377 (qa1.4) in our data asks for respondents' feelings about various current situations, compactly presented via a feeling thermometer for several sub-questions. In this example we will code the fourth, “How would you judge the current situation in [….] your personal job situation.” The respondent’s answer is coded as categorical variable ranging from 1-4, with a response of 1 corresponding to “Very Good” and 4 corresponding to “Very Bad.”  We imagine that this question directly relates to the “economic threat” underlying dimension that we hypothesize, with the negative end of the scale indicating feelings of economic threat and a negative answer suggesting no threat.
@@ -98,7 +111,7 @@ Fortunately, `K`, the number of binary questions to be hand coded, is likely to 
 
 For convenience, we processed the codes in a separate spreadsheet, which we import into the script. We also reduce the M-Matrix to include only rows with loading information.
 
-```{r, eval=T, echo=T, message=F, warning = F}
+```{r load-mcodes, eval=T, echo=T, message=F, warning = F}
 load(file=paste0(datapath, 'mcodes.rda'))
 ## Only keep M-Codes with loadings or outcomes:
 MCodes$encoding <- rowSums(abs(MCodes[,4:9])) 
@@ -109,7 +122,7 @@ MCodes <- MCodes[which(MCodes$encoding > 0),]
 
 Once we have the data and M-Matrix identified (and have cleaned column names for consistency between M-Matrix and response data), we combine the data and created M Matrix. We merge and the data and loadings, resulting in a `K x R` matrix where `K` is the number of binary questions that we have codes for and R are the number of instrument responses.  This is accomplished by the following code snippet:
 
-```{r, eval=T, echo=T, message=F, warning = F}
+```{r format-mcodes, eval=T, echo=T, message=F, warning = F}
 ## Produce a K-coded questions x R-responses data frame:
 
 mcolumns <- c("QMap", "D1-Culture threat", 
@@ -140,7 +153,7 @@ The M-Code data structure becomes our model’s “M-Matrix” (M) object.
 The conversion produces a `dxd` matrix for each question that is 0 everywhere except for the diagonal, which is a 1 if that question loads on the dimension. If uncertain about the loading, use NA in the M-Code matrix, and the model will learn any loading during the estimation step.
 
 
-```{r, eval=T, echo=T, message=F, warning = FALSE}
+```{r prep-d, eval=T, echo=T, message=F, warning = FALSE}
 
 d <- 6 #number of coded dimensions
 loadings <- 2:7 ## columns in combine object with the loadings
@@ -154,7 +167,7 @@ for (i in 1:nrow(combine)) {
 
 We also create the final `Y` object for the IRTM estimator to use. Namely, we reverse the transposition of the `Y` dataframe and ensure that we have question names that are consistently formatted for the constraint matricies and the observed data. Finally, we save the `Y` and `M` object. Troubleshooting note: it is important that the `Y` object is numeric and a matrix. You can check the data types by running Dplyr’s `summary(response_object)` [or similar] and adjust the data type if needed. Reverse the transposition of the observations and ensure Y is numeric. Likewise, if you run the IRTM sampler and it returns the message `Error: Not compatible with requested type: [type=list; target=double]` you probaby either passed a non-numeric data type in or tried to pass a data frame instead of a matrix into the `Y` parameter.
 
-```{r, eval=T, echo=T, message=F, warning = FALSE}
+```{r prep-y, eval=T, echo=T, message=F, warning = FALSE}
 #Reverse the earlier transposition of the observations:
 Y <- combine[, (d+2):ncol(combine)]%>%
     t() %>%
@@ -189,7 +202,7 @@ We finalize the anchors object by calling a small helper function, `anchors()`, 
 Using the `anchors()` function is not necessary. The anchor points can be created with the `l2   and `Y` objects by following the code tha is within the function.
 
 
-```{r, eval=T, echo=T, message=F, warning = FALSE}
+```{r prep-anchors, eval=T, echo=T, message=F, warning = FALSE}
 
 ## Generates anchor points,
 ## Takes Y outcome matrix (Yexc)
@@ -215,7 +228,7 @@ d_theta_fix <- l2$theta_fake
 
 We might also want to double-check that the dimensions of the `Y` and `M` objects are in the format that the sampler will expect. First we want to ensure that the `Y` dataframe of observations is the same length as the `M` list of constraint matricies:
 
-```{r, eval=T, echo=T, message=F, warning = FALSE}
+```{r dim-check, eval=T, echo=T, message=F, warning = FALSE}
 
 if(dim(Y)[2] == dim(M)[3]){
   print("Dimension check, passed!")
@@ -226,7 +239,7 @@ if(dim(Y)[2] == dim(M)[3]){
 
 Second, we might want to ensure that the `M` list of constraints is a list of `dxd` matrices: 
 
-```{r, eval=T, echo=T, message=F, warning = FALSE}
+```{r dim-check2, eval=T, echo=T, message=F, warning = FALSE}
 if(dim(M)[1] == d &&
    dim(M)[2]==d){
   print("M and d dimension checks, passed!")
@@ -246,7 +259,7 @@ The `Omega` object provides a covariance matrix for latent loadings, while the `
 In this example, our anchors object is `l3` , where `l3$Yall` is a matrix that contains both the anchor points as well as our actual observed data. By default, anchors() places the anchor points first in the matrix. It is not necessary that the anchor points are first as long as you note where they are, because we will want to remove them for the analysis.
 
 Note that the following code will take about 60 minutes to run on a 32G Apple M1 Pro Macbook. 
-```{r, eval=T, echo=T, message=F, warning = FALSE}
+```{r run-irtm, eval=T, echo=T, message=F, warning = FALSE}
 d=6
 nsamp= 10^3
 nburn=20^1
@@ -267,7 +280,7 @@ The `IRT-M` sampler can also run in an unconstrained mode without the coded M-Ma
 
 The code below will run the sampler on the formatted data (it has a toy burn-in and sampler runtime; a real runtime would be closer to 10^3- 10^4 iterations with a 2,000 burn-in).
 
-```{r, eval=F, echo=T, message=F, warning = FALSE}
+```{r irt-unconst, eval=F, echo=T, message=F, warning = FALSE}
 d=6
 irt.unconstrained <- M_constrained_irt(Y=l3$Yall,
             d=d,
@@ -286,7 +299,7 @@ The first thing to remember is that the IRT-M sampler returns a distribution of 
 We do that by just averaging the samples over each dimension, for each survey respondent.
 On some machines you may be able to do this with a single apply call. We also want to remove the anchor points, so that they do not become part of the analysis:
 
-```{r, eval=F, echo=T}
+```{r entire, eval=T, echo=T}
 avgthetas <- apply(irt$theta, c(1,2), mean)
 
 ## Removing anchor points:
@@ -294,9 +307,12 @@ end_of_anchors <- dim(l2$Yfake)[1]+1
 avgthetas <- avgthetas[end_of_anchors:dim(avgthetas)[1],]
 ```
 
-However, as the data becomes larger, one might need to break up the processing, such as by batch processing the averages (or using a function that is better optimized than `apply()` for large data)
+However, as the data becomes larger, one might need to break up the processing, such as by batch processing the averages (or using a function that is better optimized than `apply()` for large data). 
 
-```{r, eval=F, echo=T, message=F, warning = FALSE}
+Batch-processing is illustrated below. You want to run one of either the "whole" or the "batch" code snippets.
+
+```{r batch, eval=F, echo=T, message=F, warning = FALSE}
+
 avgthetas1 <- apply(irt$theta[1:15000, , ], c(1,2), mean)
 avgthetas2 <- apply(irt$theta[15001:30000, , ], c(1,2), mean)
 avgtheats3 <- apply(irt$theta[30001:38838, , ], c(1,2), mean)
@@ -306,43 +322,31 @@ avgthetas <- rbind(avgthetas1,
                    avgtheats3)
 
 dim(avgthetas) #38838 x  6
-```
-We also need to remove the anchor points, which are the synthetic points that we added to the data to set the scale of the estimated dimensions.
 
-```{r, eval=F, echo=T, message=F, warning = FALSE}
 end.of.anchors <- dim(l2$Yfake)[1]+1
 avgthetas <- avgthetas[end.of.anchors:dim(avgthetas)[1],]
-```
 
+```
 
 Once we have the individual-level Thetas, we can use the output of IRT-M for both descriptives and inference. The code that follows presents several methods to visualize the distribution of Theta estimates with and without additional metadata. We can connect the estimated thetas to any observation-level metadata that we have access to. In the context of a survey, we can bring in both metadata and the survey instrument itself.
 
 Here we read in a dataframe with demographic data from the survey, and bind that to the theta averages. 
 Troubleshooting note: you get an error message that `arguments imply differing number of rows` when you bind the estimated thetas to the underlying data, check to make sure that you have taken a summary statistic of the Thetas (here we used the mean) and that you have removed the synthetic anchor points.
 
-`ebdatDemographVaribs.rda' is a spreadsheet that we previously derived from the Eurobarometer survey data. It takes the large survey dataset and extracts respondent-level questions that we're interested in for the visualizations: respondent unique identifies and country, their self-reported socioeconomic class, and their self-reported political orientation. In the following code, we import the data and attach it to our averaged user-level theta estimates. We also make the column names more human-readable. At this stage, we convert several of the metadata columns to factors, to facilitate the visualizations.
+`idvs.csv' is a spreadsheet with a synthetic version of the independent variables from the underlying survey data. It takes the large survey dataset and extracts respondent-level questions that we're interested in for the visualizations: respondent unique identifies and country, their self-reported socioeconomic class, and their self-reported political orientation. In the following code, we import the data and attach it to our averaged user-level theta estimates. We also make the column names more human-readable. At this stage, we convert several of the metadata columns to factors, to facilitate the visualizations.
 
 We finish by calling R's `head()` method to preview the data.
 
-```{r, eval=F, echo=T}
-## load the user IDs that we've saved from the sample:
-
-ids <- read.csv(paste0(datapath, "eurob_sample_ids.csv"))
+```{r read-idvs, eval=T, echo=T}
 
 ## load idvs:
+idvs <- read.csv(paste0(datapath, "synth_idvs.csv"))
 
-load(paste0(datapath, "ebdatDemographVaribs.rda"))
+dim(idvs) ## 3000 x 27
 
-## take the data subset:
-idvs_subset <- idvs[which(idvs$uniqid %in% ids$uniqid),]
+colnames(idvs) ## note that d63 is class qa6a are media trust
 
-dim(idvs_subset) ## 1936 x 11
-
-## clean up:
-rm(idvs)
-rm(ids)
-
-thetas <- cbind(avgthetas, idvs_subset)
+thetas <- cbind(avgthetas, idvs)
 
 ## Rename columns for readability:
 colnames(thetas)[1:6] <- paste0("Theta", 1:6)
@@ -352,7 +356,7 @@ colnames(thetas)[colnames(thetas)=="qb7_2"] <- "MoreBorderControl"
 thetas$mediatrust <- as.factor(thetas$mediatrust)
 thetas$class <- as.factor(thetas$class)
 thetas$polorient <- as.factor(thetas$polorient)
-thetas$isocntry <- as.factor(thetas$isocntry)
+#thetas$isocntry <- as.factor(thetas$isocntry) #first round has no country info
 
 head(thetas)
 ```
@@ -366,8 +370,7 @@ First, we load packages to assist in visualization.
 The first code is a simple ridge plot visualization of the distribution of the Theta values across all respondents. It is carried out by using the `melt()` call from the  `dplyr` library, which converts the data from wide to long format. Treating each `Theta` identifier as a factor makes it easy to use the `ggridges` library to visualize ridge plots for each Theta.
 
  
-```{r, eval=F, echo=T}
- eval=F, echo=T, message=F, warning = FALSE}
+```{r viz-thetas, eval=T, echo=T, eval=F, echo=T, message=F, warning = FALSE}
 library(ggplot2) #version: ggplot2_3.4.4 
 library(ggridges) #version: ggridges_0.5.6 
 library(RColorBrewer) #version: RColorBrewer_1.1-3
@@ -408,7 +411,7 @@ colnames(thetas)[1:6] <-  recode(colnames(thetas)[1:6],
 
 
 
-gg <- ggplot(basedata,
+ggbase <- ggplot(basedata,
              aes(x=Value,
                  y=Theta,
                  fill=Theta))+
@@ -419,20 +422,27 @@ gg <- ggplot(basedata,
   scale_fill_brewer(palette='Spectral') +
   theme_bw()
 
-ggsave(gg, file="ebirtm.png", width=5, height=5, units ="in", dpi=300)
+ggbase
+
+ggsave(ggbase, file="ebirtm-synth.png", width=5, height=5, units ="in", dpi=300)
 ```
 
-![Visualization of estimated Theta distributions, Eurobarometer Data](ebirtm.png){width=50%}
+![Visualization of estimated Theta distributions, Eurobarometer Data](ebirtm-synth.png){width=50%}
 
 
 Moreover, we can do more sophisticated visualizations. For example, we may have a theory in which we expect that the underlying dimensions we find will be moderated by demographic variables.  We can use the metadata that we retained for the visualizations. The following example code presents ridge plot visualizations for different levels of respondent-reported media trust patterns (column 17 in the data):
 
-```{r, eval=F, echo=T}
-dat2 <- melt(thetas[,c(1:6, 17)])
+```{r medtrust-viz, eval=F, echo=T, message=F, warning = FALSE}
+
+mtcols = c('Culture Threat', 'Religion Threat', 
+         'Economic Threat', 'Health Threat', 'Support Immigration',
+         'Support EU', 'mediatrust')
+
+dat2 <- melt(thetas[,mtcols])
 
 colnames(dat2)[2] <- "Theta"
 
-gg2 <- ggplot(dat2,
+ggmt <- ggplot(dat2,
               aes(x=value,
                   y=mediatrust,
                   fill=mediatrust))+
@@ -446,10 +456,11 @@ gg2 <- ggplot(dat2,
   scale_fill_brewer(palette='Spectral') +
   theme_bw()
 
-gg2
+ggsave(ggmt, file="theta-media-synth.png", width=5, height=5, units ="in", dpi=300)
+
 ```
 
-![Visualization of the distribution of Thetas by media trust.](theta_media_trust.png){width=50%}
+![Visualization of the distribution of Thetas by media trust.](theta-media-synth.png){width=50%}
 
 ### Lambda
 
@@ -462,7 +473,7 @@ We can unpack this object for each underlying dimension.
 
 First, we subset the `lambda` object. In this example, we are interested in `\Theta_{1}`, which we coded as questions that we believed related to a feeling of abstract cultural threat. The first row of code pulls out the fifth dimension from the array, producing an dataframe with the sampler's distribution for for each coded question in the test instrument.  In order to analyze the lambda loadings, we need to summarize the per-question samples (via the `rowwise()` call). We do that here via the mean and variance, although the summary is customizable.  After summarizing the per-question sample distribution, we keep only the columns with the `mean` and `variance`.
 
-```{r, eval=F, echo=T, message=F, warning = FALSE}
+```{r lambdas, eval=TRUE, echo=T, message=F, warning = FALSE}
 
 theta_id <-  1 ## culture threat
 lambda_weight <- as.data.frame(irt$lambda[,theta_id,]) %>%
@@ -478,14 +489,14 @@ The result is a dataframe with the mean and variance of the `lambda` distributio
 
 Before extracting metadata with question names, it is also worthwhile to make sure that the length of the data object with the question metadata matches the length of the lambda summary object:
 
-```{r, eval=F, echo=T, message=F, warning = FALSE}
+```{r lambda-check, eval=T, echo=T, message=F, warning = FALSE}
 ## Verify that the data objects have the same length:
 dim(question)[1] == dim(lambda_weight)[1]
 ```
 
 In this case, we also coded the `MCodes` object with a column that provides substantive notes on what the question was asking. We can extract those columns and attach them to the `lambda` summary:
 
-```{r, eval=F, echo=T, message=F, warning = FALSE}
+```{r mcodes-lambda-t1, eval=T, echo=T, message=F, warning = FALSE}
 
 q2 <- question %>%
   left_join(MCodes[,c("QMap", "SubstantiveNotes")], 
