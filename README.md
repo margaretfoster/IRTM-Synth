@@ -10,6 +10,8 @@ Conversely, as methodologists, we also understand that new tools require applied
 
 Here, we create synthetic versions of existing data to serve as training examples, with references and links to the original datasets so that researchers and users can use (and credit) the original data in their applications.
 
+## Data
+
 ## Features:
 
 We use Python in a Jupyter Project for data preparation, [YData-synthetic](https://github.com/ydataai/ydata-synthetic) in a Google Colab notebook to create the synthetic data.
